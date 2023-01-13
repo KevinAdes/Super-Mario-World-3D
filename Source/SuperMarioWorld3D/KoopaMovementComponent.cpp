@@ -57,21 +57,34 @@ void UKoopaMovementComponent::PhysSlide(float deltaTime, int32 Iterations)
 	FVector DPMultiplier = FVector(0, 0, 1);
 	double ImpactDP = FVector::DotProduct(SurfaceHit.ImpactNormal, DPMultiplier);
 	float FloorDegrees = UKismetMathLibrary::Acos(ImpactDP);
+
+	FString VelSize = FString::SanitizeFloat(Velocity.Size());
+	FString MinSize = FString::SanitizeFloat(Slide_MinSpeed);
 	if(FloorDegrees < 10 && Velocity.Size() < Slide_MinSpeed)
 	{
+		//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, TEXT("Some debug message!"));
 		ExitSlide();
 		StartNewPhysics(deltaTime, Iterations);
 		return;
 	}
 
 	
+	
 	if (!HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity()) 
 	{
-		CalcVelocity(deltaTime, Slide_Friction, true, GetMaxBrakingDeceleration());
+		CalcVelocity(deltaTime, Slide_Friction, false, GetMaxBrakingDeceleration());
 	}
 	
+	
+	if (surfaceCheck) 
+	{
+		Velocity += Slide_GravityForce * FVector::DownVector * deltaTime * (UpdatedComponent->GetForwardVector() * 1400) - ((UpdatedComponent->GetForwardVector() * UpdatedComponent->GetForwardVector()) * 6.57);
+	}
+	else 
+	{
+		Velocity += Slide_FallingGravityForce * FVector::DownVector * deltaTime + (UpdatedComponent->GetForwardVector() * 14);
+	}
 
-	Velocity += Slide_GravityForce * FVector::DownVector * deltaTime;
 	Iterations++;
 	bJustTeleported = false;
 	
@@ -88,7 +101,7 @@ void UKoopaMovementComponent::PhysSlide(float deltaTime, int32 Iterations)
 	}
 
 	FHitResult NewSurfaceHit;
-	if (!GetSlideSurface(NewSurfaceHit) && Velocity.SizeSquared() < pow(500, 2))
+	if (!GetSlideSurface(NewSurfaceHit) && Velocity.SizeSquared() < Slide_MinSpeed)
 	{
 		ExitSlide();
 	}

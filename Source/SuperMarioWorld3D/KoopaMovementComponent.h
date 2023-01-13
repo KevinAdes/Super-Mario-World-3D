@@ -25,6 +25,7 @@ class SUPERMARIOWORLD3D_API UKoopaMovementComponent : public UCharacterMovementC
 	UPROPERTY(EditDefaultsOnly) float Slide_MinSpeed = 500;
 	UPROPERTY(EditDefaultsOnly) float Slide_EnterImpulse = 2000;
 	UPROPERTY(EditDefaultsOnly) float Slide_GravityForce = 5000;
+	UPROPERTY(EditDefaultsOnly) float Slide_FallingGravityForce = 10000;
 	UPROPERTY(EditDefaultsOnly) float Slide_Friction = 1.5;
 
 	UPROPERTY(Transient) AKoopa* KoopaOwner;
