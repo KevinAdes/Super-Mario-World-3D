@@ -10,7 +10,7 @@
  * 
  */
 UENUM(BlueprintType)
-enum class ESaveDataValue : uint8
+enum class EPlayerSaveDataValue : uint8
 {
 	SD_lives			UMETA(DisplayName = "Lives"),
 	SD_coins			UMETA(DisplayName = "Coins"),
@@ -20,7 +20,7 @@ enum class ESaveDataValue : uint8
 };
 
 USTRUCT(BlueprintType)
-struct FSaveData
+struct FPlayerSaveDataStruct
 {
 	GENERATED_BODY()
 
@@ -39,39 +39,39 @@ struct FSaveData
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, SaveGame)
 	int32 powerState = 1;
 
-	FSaveData(){}
+	FPlayerSaveDataStruct(){}
 
-	void SetData(const ESaveDataValue type, int32 value)
+	void SetData(const EPlayerSaveDataValue type, int32 value)
 	{
 		switch (type)
 		{
-		case ESaveDataValue::SD_lives:
+		case EPlayerSaveDataValue::SD_lives:
 			lives = value;
-		case ESaveDataValue::SD_coins:
+		case EPlayerSaveDataValue::SD_coins:
 			coins = value;
-		case ESaveDataValue::SD_points:
+		case EPlayerSaveDataValue::SD_points:
 			points = value;
-		case ESaveDataValue::SD_starPoints:
+		case EPlayerSaveDataValue::SD_starPoints:
 			starPoints = value;
-		case ESaveDataValue::SD_powerState:
+		case EPlayerSaveDataValue::SD_powerState:
 			powerState = value;
 		default:;
 		}
 	}
 
-	int GetData(const ESaveDataValue type)
+	int GetData(const EPlayerSaveDataValue type)
 	{
 		switch (type)
 		{
-		case ESaveDataValue::SD_lives:
+		case EPlayerSaveDataValue::SD_lives:
 			return lives;
-		case ESaveDataValue::SD_coins:
+		case EPlayerSaveDataValue::SD_coins:
 			return coins;
-		case ESaveDataValue::SD_points:
+		case EPlayerSaveDataValue::SD_points:
 			return points;
-		case ESaveDataValue::SD_starPoints:
+		case EPlayerSaveDataValue::SD_starPoints:
 			return starPoints;
-		case ESaveDataValue::SD_powerState:
+		case EPlayerSaveDataValue::SD_powerState:
 			return powerState;
 		default:
 			return 0;
@@ -87,13 +87,13 @@ class SUPERMARIOWORLD3D_API UPlayerSaveData : public USaveGame
 public:
 
 	UPROPERTY(SaveGame, BlueprintReadWrite)
-	FSaveData SaveData;
+	FPlayerSaveDataStruct SaveData;
 
 	UFUNCTION(BlueprintCallable)
-	void SetSaveData(ESaveDataValue type, int32 value);
+	void SetSaveData(EPlayerSaveDataValue type, int32 value);
 
 	UFUNCTION(BlueprintCallable)
-	int32 GetSaveData(ESaveDataValue type);
+	int32 GetSaveData(EPlayerSaveDataValue type);
 	
 	UFUNCTION(BlueprintCallable, Category="Saving/Loading")
 	static UPlayerSaveData* LoadPlayerSaveData();

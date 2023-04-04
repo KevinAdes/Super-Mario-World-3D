@@ -5,12 +5,12 @@
 
 #include "Kismet/GameplayStatics.h"
 
-void UPlayerSaveData::SetSaveData(ESaveDataValue type, int32 value)
+void UPlayerSaveData::SetSaveData(EPlayerSaveDataValue type, int32 value)
 {
 	SaveData.SetData(type, value);
 }
 
-int32 UPlayerSaveData::GetSaveData(ESaveDataValue type)
+int32 UPlayerSaveData::GetSaveData(EPlayerSaveDataValue type)
 {
 	return SaveData.GetData(type);
 }
