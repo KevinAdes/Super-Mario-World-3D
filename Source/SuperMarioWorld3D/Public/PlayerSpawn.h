@@ -33,4 +33,7 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
 	ESpawnType SpawnType;
 
+	//todo: move all this level blueprint shit into cpp
+	UPROPERTY(BlueprintReadWrite);
+	int32 Index;
 };

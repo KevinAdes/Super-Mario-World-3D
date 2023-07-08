@@ -75,7 +75,7 @@ class SUPERMARIOWORLD3D_API ULevelSaveData : public USaveGame
 {
 	GENERATED_BODY()
 public:
-
+	
 	UPROPERTY(SaveGame, BlueprintReadWrite)
 	TMap<FString, FLevelSaveDataStruct> SavedLevelMap;
 
