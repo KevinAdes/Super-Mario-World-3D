@@ -88,7 +88,8 @@ void AProgressPole::BeginPlay()
 {
 	Super::BeginPlay();
 	//what a line
-	if(ULevelSaveData::LoadLevelSaveData()->GetMidpointCleared(UGameplayStatics::GetCurrentLevelName(GetWorld())) && bMidPoint)
+	ULevelSaveData* LvlData = ULevelSaveData::LoadLevelSaveData();
+	if(LvlData->GetMidpointCleared(UGameplayStatics::GetCurrentLevelName(GetWorld())) && bMidPoint)
 	{
 		Tape->DestroyComponent();
 	}
