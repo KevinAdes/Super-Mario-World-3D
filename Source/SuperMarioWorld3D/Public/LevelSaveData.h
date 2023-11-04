@@ -11,6 +11,18 @@
  * 
  */
 
+USTRUCT()
+struct FLevelData : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
+	FString DisplayName;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
+	int32 TimeLimit;
+};
+
 USTRUCT(BlueprintType)
 struct FLevelSaveDataStruct
 {
