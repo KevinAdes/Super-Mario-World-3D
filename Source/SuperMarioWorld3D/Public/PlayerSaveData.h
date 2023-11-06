@@ -17,6 +17,7 @@ enum class EPlayerSaveDataValue : uint8
 	SD_points			UMETA(DisplayName = "Points"),
 	SD_starPoints		UMETA(DisplayName = "Star Points"),
 	SD_powerState		UMETA(DisplayName = "Power State"),
+	SD_powerValue		UMETA(DisplayName = "Held Item Power Value")
 };
 
 USTRUCT(BlueprintType)
@@ -37,8 +38,11 @@ struct FPlayerSaveDataStruct
 	int32 starPoints = 0;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, SaveGame)
-	int32 powerState = 1;
-
+	int32 powerState = 0;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, SaveGame)
+	int32 HeldItemPowerValue = 0;
+	
 	FPlayerSaveDataStruct(){}
 
 	void SetData(const EPlayerSaveDataValue type, int32 value)
@@ -55,6 +59,8 @@ struct FPlayerSaveDataStruct
 			starPoints = value;
 		case EPlayerSaveDataValue::SD_powerState:
 			powerState = value;
+		case EPlayerSaveDataValue::SD_powerValue:
+			HeldItemPowerValue = value;
 		default:;
 		}
 	}
@@ -73,6 +79,8 @@ struct FPlayerSaveDataStruct
 			return starPoints;
 		case EPlayerSaveDataValue::SD_powerState:
 			return powerState;
+		case EPlayerSaveDataValue::SD_powerValue:
+			return HeldItemPowerValue;
 		default:
 			return 0;
 		}
