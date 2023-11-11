@@ -8,6 +8,7 @@
 void UPlayerSaveData::SetSaveData(EPlayerSaveDataValue type, int32 value)
 {
 	SaveData.SetData(type, value);
+	
 }
 
 int32 UPlayerSaveData::GetSaveData(EPlayerSaveDataValue type)
