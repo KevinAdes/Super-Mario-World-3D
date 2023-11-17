@@ -86,6 +86,9 @@ UCLASS()
 class SUPERMARIOWORLD3D_API ULevelSaveData : public USaveGame
 {
 	GENERATED_BODY()
+	
+	ULevelSaveData();
+
 public:
 	
 	UPROPERTY(SaveGame, BlueprintReadWrite)

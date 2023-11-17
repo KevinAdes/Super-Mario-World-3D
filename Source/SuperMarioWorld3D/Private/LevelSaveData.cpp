@@ -5,6 +5,11 @@
 
 #include "Kismet/GameplayStatics.h"
 
+ULevelSaveData::ULevelSaveData()
+{
+	AddSlot("Yoshis_Island_1");
+}
+
 void ULevelSaveData::AddSlot(FString CurrentLevel)
 {
 	if (!SavedLevelMap.Contains(CurrentLevel))
