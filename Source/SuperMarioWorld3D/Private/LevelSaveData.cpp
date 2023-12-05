@@ -7,7 +7,7 @@
 
 ULevelSaveData::ULevelSaveData()
 {
-	AddSlot("Yoshis_Island_1");
+	AddSlot("L_Yoshis_Island_1");
 }
 
 void ULevelSaveData::AddSlot(FString CurrentLevel)
