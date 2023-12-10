@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-
+#include "DataLibrary.generated.h"
 /**
  * 
  */
@@ -15,4 +15,41 @@ public:
 };
 
 USTRUCT(BlueprintType)
-struct SUPERMARIOWORLD3D_API F_MarioPhysicsProperties
+struct SUPERMARIOWORLD3D_API FMarioPhysicsProperties : public FTableRowBase
+{
+	GENERATED_BODY()
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float NaturalVelocity = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float MaxWalkVelocity = 0;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float RunMaxVelocity = 0;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float SprintMaxVelocity = 0;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float SlideMaxVelocity = 0;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float WalkAccel = 0;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float RunAccel = 0;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float Decel = 0;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float WalkSkidDecel = 0;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float RunSkidDecel = 0;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float SlideDecel = 0;
+
+};
