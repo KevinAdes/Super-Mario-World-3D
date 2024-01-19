@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Components/BoxComponent.h"
 #include "GameFramework/Actor.h"
 #include "ProgressPole.generated.h"
 
@@ -11,6 +12,7 @@ class USplineMeshComponent;
 
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FTapeHit, AActor*, OtherActor);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FGoalPassed, AActor*, OtherActor);
 
 UCLASS(Blueprintable, BlueprintType)
 class SUPERMARIOWORLD3D_API AProgressPole : public AActor
@@ -43,6 +45,8 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UStaticMeshComponent* Pole2;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UBoxComponent* GoalCollision = nullptr;
 public:
 	//functions
 	
@@ -57,8 +61,13 @@ protected:
 	UFUNCTION()
 	void OnTapeHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
+	UFUNCTION()
+	void OnGoalPassed(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+	
 public:
 	UPROPERTY(BlueprintAssignable)
 	FTapeHit TapeHit;
 
+	UPROPERTY(BlueprintAssignable)
+	FGoalPassed GoalPassed;
 };

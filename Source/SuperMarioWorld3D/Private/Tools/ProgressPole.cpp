@@ -7,6 +7,7 @@
 #include "Chaos/GeometryParticlesfwd.h"
 #include "Components/SplineMeshComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "Kismet/KismetMathLibrary.h"
 
 
 // Sets default values
@@ -24,10 +25,17 @@ AProgressPole::AProgressPole()
 
 	// Create and attach GoalTape component
 	Tape = CreateDefaultSubobject<USplineMeshComponent>(TEXT("GoalTape"));
-	Tape->SetupAttachment(RootComponent);
+	Tape->SetupAttachment(Pole1);
 
 	// Bind the OnComponentBeginOverlap event to the OnGoalTapeHit function
 	Tape->OnComponentBeginOverlap.AddDynamic(this, &AProgressPole::OnTapeHit);
+
+	if (!bMidPoint)
+	{
+		GoalCollision = CreateDefaultSubobject<UBoxComponent>(TEXT("GoalCollision"));
+		GoalCollision->SetupAttachment(RootComponent);
+		GoalCollision->OnComponentBeginOverlap.AddDynamic(this, &AProgressPole::OnGoalPassed);
+	}
 }
 
 void AProgressPole::OnConstruction(const FTransform& Transform)
@@ -81,24 +89,41 @@ void AProgressPole::OnConstruction(const FTransform& Transform)
 	Pole1->SetStaticMesh(PoleMesh);
 	Pole2->SetStaticMesh(PoleMesh);
 	Tape->SetStaticMesh(TapeMesh);
+
+	if (!bMidPoint)
+	{
+		GoalCollision->SetRelativeRotation(UKismetMathLibrary::FindLookAtRotation(StartPoint, EndPoint));
+		FVector temp = (StartPoint + EndPoint)/2;
+		GoalCollision->SetWorldLocation(FVector(temp.X, temp.Y, StartPoint.Z+ 720));
+		GoalCollision->SetBoxExtent(FVector(UKismetMathLibrary::Vector_Distance(StartPoint, EndPoint)/2, 2, 720));
+	}
+	
 }
 
 // Called when the game starts or when spawned
 void AProgressPole::BeginPlay()
 {
 	Super::BeginPlay();
-	//what a line
 	ULevelSaveData* LvlData = ULevelSaveData::LoadLevelSaveData();
-	if(LvlData->GetMidpointCleared(UGameplayStatics::GetCurrentLevelName(GetWorld())) && bMidPoint)
+
+	FString CurrentLevelName = UGameplayStatics::GetCurrentLevelName(GetWorld());
+	if (!LvlData->SavedLevelMap.Find(CurrentLevelName))
+	{
+		
+		ULevelSaveData::SaveLevelSaveData(LvlData);
+		return;
+	}
+	if (LvlData->GetMidpointCleared(CurrentLevelName) && bMidPoint)
 	{
 		Tape->DestroyComponent();
 	}
 	
+	ULevelSaveData::SaveLevelSaveData(LvlData);
 }
 
 
 void AProgressPole::OnTapeHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp,
-                              int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+							  int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	Tape->DestroyComponent();
 	TapeHit.Broadcast(OtherActor);
@@ -114,6 +139,21 @@ void AProgressPole::OnTapeHit(UPrimitiveComponent* HitComponent, AActor* OtherAc
 		LevelSaveData->SetMidpointCleared(CurrentLevelName, false);
 		LevelSaveData->SetCurrentSpawn(CurrentLevelName, 0);
 	}
+	ULevelSaveData::SaveLevelSaveData(LevelSaveData);
+}
+
+
+void AProgressPole::OnGoalPassed(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp,
+							  int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	GoalPassed.Broadcast(OtherActor);
+
+	const FString CurrentLevelName = UGameplayStatics::GetCurrentLevelName(GetWorld());
+	ULevelSaveData* LevelSaveData = ULevelSaveData::LoadLevelSaveData();
+	
+	LevelSaveData->SetMidpointCleared(CurrentLevelName, false);
+	LevelSaveData->SetCurrentSpawn(CurrentLevelName, 0);
+	
 	ULevelSaveData::SaveLevelSaveData(LevelSaveData);
 }
 

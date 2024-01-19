@@ -19,6 +19,9 @@ struct FLevelData : public FTableRowBase
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
 	FString DisplayName;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	ULevel* LevelReference = nullptr;
+	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
 	int32 TimeLimit;
 };
