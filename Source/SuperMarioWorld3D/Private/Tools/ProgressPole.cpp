@@ -1,6 +1,6 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
+     
 #include "Tools/ProgressPole.h"
 
 #include "LevelSaveData.h"
@@ -33,7 +33,7 @@ AProgressPole::AProgressPole()
 	if (!bMidPoint)
 	{
 		GoalCollision = CreateDefaultSubobject<UBoxComponent>(TEXT("GoalCollision"));
-		GoalCollision->SetupAttachment(RootComponent);
+		GoalCollision->SetupAttachment(RootComponent); 
 		GoalCollision->OnComponentBeginOverlap.AddDynamic(this, &AProgressPole::OnGoalPassed);
 	}
 }
@@ -69,7 +69,8 @@ void AProgressPole::OnConstruction(const FTransform& Transform)
 		return;
 	}
 //No Bitches??????
-#pragma endregion 
+#pragma endregion  
+
 	FVector Direction = Pole2->GetComponentLocation() - Pole1->GetComponentLocation();
 
 	// Normalize the direction vector
