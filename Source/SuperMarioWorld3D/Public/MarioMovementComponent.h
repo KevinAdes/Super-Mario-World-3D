@@ -17,5 +17,5 @@ public:
 public:
 	UMarioMovementComponent();
 	
-	
+	virtual void PhysWalking(float deltaTime, int32 Iterations) override;
 };

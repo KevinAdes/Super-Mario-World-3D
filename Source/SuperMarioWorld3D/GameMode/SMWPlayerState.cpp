@@ -3,3 +3,10 @@
 
 #include "SMWPlayerState.h"
 
+#include "Blueprint/UserWidget.h"
+
+//TODO: move to constructor
+void ASMWPlayerState::BeginPlay()
+{
+	Super::BeginPlay();
+}

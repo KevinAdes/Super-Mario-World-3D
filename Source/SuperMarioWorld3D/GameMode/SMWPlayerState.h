@@ -14,6 +14,14 @@ class SUPERMARIOWORLD3D_API ASMWPlayerState : public APlayerState
 {
 	GENERATED_BODY()
 
+public:
+
+	virtual void BeginPlay() override;
+	
+	int32 GetPowerState() const { return PowerState; }
+
+	int32 GetStoredPowerUpValue() const { return StoredPowerUpValue; }
+	
 protected:
 	UPROPERTY(BlueprintReadWrite)
 	FName PlayerName;
@@ -22,11 +30,20 @@ protected:
 	int32 Lives;
 	
 	UPROPERTY(BlueprintReadWrite)
+	int32 PowerState;
+
+	UPROPERTY(BlueprintReadWrite)
+	int32 StoredPowerUpValue;
+	
+	UPROPERTY(BlueprintReadWrite)
 	int32 Coins;
 	
 	UPROPERTY(BlueprintReadWrite)
 	int32 Points;
-	
+
+	UPROPERTY(BlueprintReadWrite)
+	int32 StarPoints;
+
 	UPROPERTY(BlueprintReadWrite)
 	FLinearColor Skin;
 	
@@ -35,4 +52,6 @@ protected:
 	
 	UPROPERTY(BlueprintReadWrite)
 	FLinearColor Pants;
+
+
 };

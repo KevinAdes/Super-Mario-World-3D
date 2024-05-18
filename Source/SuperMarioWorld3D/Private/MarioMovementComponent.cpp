@@ -6,3 +6,8 @@
 UMarioMovementComponent::UMarioMovementComponent()
 {
 }
+
+  void UMarioMovementComponent::PhysWalking(float deltaTime, int32 Iterations)
+  {
+    Super::PhysWalking(deltaTime, Iterations);
+  }
