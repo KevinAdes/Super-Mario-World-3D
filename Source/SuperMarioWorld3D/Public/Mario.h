@@ -64,6 +64,9 @@ public:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float RunAccel = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float SlideAccel = 0;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float Decel = 0;
@@ -73,10 +76,6 @@ public:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float RunSkidDecel = 0;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float SlideDecel = 0;
-
 };
 
 
@@ -195,12 +194,17 @@ public:
 	void RotateCharacter();
 
 	void TraceForward(FHitResult& HitResult, bool& HitDetected);
-	
+	void TraceDirectional(FVector3d StartVector, FVector3d EndVector, FHitResult& HitResult, bool& HitDetected);
+
 	void TraceDown(FHitResult& HitResult, bool& HitDetected);
 	
 	float GetFloorAngle();
 
 	bool IsMarioGrounded();
+
+	FVector2d GetCameraBasedMovementDirection();
+
+	bool IsVelocityGreaterThanMax();
 #pragma endregion
 
 
@@ -359,59 +363,59 @@ public:
 	UInputMappingContext* DefaultMappingContext;
 
 	
-	UPROPERTY()
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	UInputAction* InputHorizontalMove;
-
+	
 	FEnhancedInputActionValueBinding* InputHorizontalMoveValueBinding;
 	
-	UPROPERTY()
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	UInputAction* InputJump;
 	
 	FEnhancedInputActionValueBinding* InputJumpValueBinding;
 	
-	UPROPERTY()
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	UInputAction* InputSpinJump;
 
 	FEnhancedInputActionValueBinding* InputSpinJumpValueBinding;
 	
-	UPROPERTY()
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	UInputAction* InputSpecial;
 	
 	FEnhancedInputActionValueBinding* InputSpecialValueBinding;
 	
-	UPROPERTY()
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	UInputAction* InputCrouch;
 	
 	FEnhancedInputActionValueBinding* InputCrouchValueBinding;
 	
-	UPROPERTY()
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	UInputAction* InputLookUp;
 
 	FEnhancedInputActionValueBinding* InputLookupValueBinding;
 	
-	UPROPERTY()
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	UInputAction* InputStart;
 
-	UPROPERTY()
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	UInputAction* InputSelect;
 
-	UPROPERTY()
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	UInputAction* InputSnapCameraLeft;
 
-	UPROPERTY()
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	UInputAction* InputSnapCameraRight;
 
-	UPROPERTY()
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	UInputAction* MoveCameraHorizontal;
 
-	UPROPERTY()
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	UInputAction* MoveCameraVertical;
 
 	
 	UPROPERTY(BlueprintReadWrite)
 	UInputMappingContext* MessageBlockMappingContext;
 
-	UPROPERTY()
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	UInputAction* InputConfirmMessage;
 
 	UPROPERTY(EditDefaultsOnly, meta = (RequiredAssetDataTags = "RowStructure=/Script/SuperMarioWorld3D.MarioPhysicsProperties"))
@@ -430,15 +434,21 @@ public:
 	float PHYS_FACTOR = 6;
 
 	UPROPERTY(BlueprintReadWrite)
-	float TERMINAL_VELOCITY;
+	float TERMINAL_VELOCITY = -44;
 
+	UPROPERTY(BlueprintReadWrite)
+	float SKID_TIME = .2;
+	
 	const float JUMP_HELD_GRAVITY = .1875f;
 
 	const float DEFAULT_GRAVITY = .375f;
-private:
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)	
 	bool DrawDebugTraces;
 
+private:
+
+	
 	
 	UPROPERTY()
 	ULevelHUD* LevelHUD;
@@ -464,6 +474,8 @@ private:
 	
 	float VerticalVelocity;
 
+	float delta_time = 0;
+	
 	bool holding = false;
 	
 	bool crouched = false;
@@ -472,7 +484,7 @@ private:
 	
 	bool skidding = false;
 
-	bool gravity_enabled = false;
+	bool gravity_enabled = true;
 
 	float jump_buffer_length = .2f;
 	

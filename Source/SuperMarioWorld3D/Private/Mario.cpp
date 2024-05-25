@@ -22,24 +22,22 @@
 AMario::AMario(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	Root = CreateDefaultSubobject<USceneComponent>("Root");
-	RootComponent = Root;
-
-	MarioMesh = CreateDefaultSubobject<UStaticMeshComponent>("Mesh");
-	MarioMesh->SetupAttachment(Root);
+	
 	Collision = CreateDefaultSubobject<UCapsuleComponent>("Collision");
-	Collision->SetupAttachment(Root);
+	RootComponent = Collision;
+	MarioMesh = CreateDefaultSubobject<UStaticMeshComponent>("Mesh");
+	MarioMesh->SetupAttachment(Collision);
 	HoldBox = CreateDefaultSubobject<UBoxComponent>("Hold Box");
-	HoldBox->SetupAttachment(Root);
+	HoldBox->SetupAttachment(MarioMesh);
 	StompBox = CreateDefaultSubobject<UBoxComponent>("Stomp Box");
-	StompBox->SetupAttachment(Root);
+	StompBox->SetupAttachment(MarioMesh);
 	EnhancedInputComponent = CreateDefaultSubobject<UEnhancedInputComponent>("Input");
 	SpringArmComponent = CreateDefaultSubobject<USpringArmComponent>("Spring Arm");
-	SpringArmComponent->SetupAttachment(Root);
+	SpringArmComponent->SetupAttachment(MarioMesh);
 	CameraComponent = CreateDefaultSubobject<UCameraComponent>("Camera");
 	CameraComponent->SetupAttachment(SpringArmComponent);
 	DecalComponent = CreateDefaultSubobject<UDecalComponent>("Shadow");
-	DecalComponent->SetupAttachment(Root);
+	DecalComponent->SetupAttachment(MarioMesh);
 	PostProcessComponent = CreateDefaultSubobject<UPostProcessComponent>("PostProcess");	
 }
 
@@ -87,8 +85,8 @@ void AMario::BindHudEvents()
 void AMario::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
-	
-	if (auto PlayerController = Cast<APlayerController>(Controller))
+	APlayerController* PlayerController = Cast<APlayerController>(Controller);
+	if (PlayerController)
 	{
 		if (UEnhancedInputLocalPlayerSubsystem* EnhancedInputSubsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
 		{
@@ -123,36 +121,34 @@ void AMario::SetupPlayerInputComponent()
 	EnhancedInputComponent->BindAction(InputLookUp, ETriggerEvent::Completed, this, &AMario::UnLookUp);
 }
 
-bool AMario::IsPlayerAddingMovement()
-{
-	return InputHorizontalMoveValueBinding->GetValue().Get<FVector2d>().Length() > .25f;
-}
-
-bool AMario::IsMarioMoving()
-{
-	return HorizontalVelocity.Length() > 0;
-}
 
 // Called every frame
 void AMario::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	delta_time = DeltaTime * 100;
+	
 	if (UGameplayStatics::IsGamePaused(this))
 	{
-		return;
+		//return;
 	}
 
 	SetPhysicsValues();
 	SetJumpVelocities();
 	UpdatePMeter();
 
-	AdjustVelocityForSlope();
 
 	if ((!IsPlayerAddingMovement() && IsMarioMoving()) || (MarioState == EMarioStates::Crouched && IsMarioGrounded()))
 	{
 		IdleDecellerate();
 	}
+
+	
+	ApplyGravity();
+	AdjustVelocityForSlope();
+	UpdateCharacterLocation();
+	UpdateCameraLocation();
 }
 
 void AMario::EndLevelSequence()
@@ -175,7 +171,7 @@ void AMario::SetPhysicsValues()
 	TraceForward(ForwardHitResult, useUpHillPhysics);
 	float FloorAngle = GetFloorAngle();
 
-	if (FMath::IsNearlyEqual(FloorAngle, 0, 6))
+	if (FMath::IsNearlyEqual(FloorAngle, 0, 5))
 	{
 		useUpHillPhysics = true;
 	}
@@ -199,6 +195,11 @@ void AMario::SetPhysicsValues()
 	}
 }
 
+bool AMario::IsMarioMoving()
+{
+	return HorizontalVelocity.Length() > 0;
+}
+
 void AMario::UpdateHorizontalVelocity(FVector2d NewXYVelocity)
 {
 	HorizontalVelocity = NewXYVelocity;
@@ -212,9 +213,9 @@ void AMario::UpdateVerticalVelocity(float NewZVelocity)
 void AMario::AccelerateVector2d(FVector2d& Vector, float Acceleration)
 {
 	//chat... is this real?
-	float deltaTime = GetWorld()->DeltaTimeSeconds;
+	float adjustedAcceleration = Acceleration * delta_time;
 	float InitialMagnintude = Vector.Length();
-	float AcceleratedMagnitude = InitialMagnintude + Acceleration;
+	float AcceleratedMagnitude = InitialMagnintude + adjustedAcceleration;
 	float AdjustmentFactor = AcceleratedMagnitude/InitialMagnintude;
 	Vector = Vector * AdjustmentFactor;
 }
@@ -226,7 +227,6 @@ void AMario::AdjustVelocityForSlope()
 	{
 		return;
 	}
-	
 	float verticalProportion = FloorAngle/45;
 
 	FHitResult ForwardHitResult;
@@ -234,9 +234,14 @@ void AMario::AdjustVelocityForSlope()
 	TraceForward(ForwardHitResult, ForwardHitSuccess);
 	bool MovingUpHill = ForwardHitSuccess && IsPlayerAddingMovement();
 	int32 Direction = MovingUpHill ?  1 : -1;
-	
+	UE_LOG(LogTemp, Warning, TEXT("MovingUpHill = %hhd"), ForwardHitSuccess)
 	float newVerticalVelocity = HorizontalVelocity.Length() * verticalProportion * Direction;
 	UpdateVerticalVelocity(newVerticalVelocity);
+
+	if (IsPlayerAddingMovement())
+	{
+		return;
+	}
 	
 	FHitResult DownwardHitResult;
 	bool DownHitSuccess;
@@ -244,13 +249,16 @@ void AMario::AdjustVelocityForSlope()
 	
 	FVector2d SlopeVector = FVector2d(DownwardHitResult.Normal.X, DownwardHitResult.Normal.Y);
 	SlopeVector.Normalize();
+
+	FVector2d AdjustedSlopeVelocity = SlopeVector * PhysicsProperties->NaturalVelocity;
 	
-	UpdateHorizontalVelocity(SlopeVector * PhysicsProperties->NaturalVelocity * PHYS_FACTOR);
+	UpdateHorizontalVelocity(SlopeVector * PhysicsProperties->NaturalVelocity);
+	
 }
 
 void AMario::IdleDecellerate()
 {
-	AccelerateVector2d(HorizontalVelocity, PhysicsProperties->Decel);
+	AccelerateVector2d(HorizontalVelocity, PhysicsProperties->Decel * -1);
 	if (HorizontalVelocity.Length() <= MIN_WALK_SPEED)
 	{
 		UpdateHorizontalVelocity(FVector2d::Zero());
@@ -265,10 +273,11 @@ void AMario::ApplyGravity()
 	bool hasMarioReachedTerminalVelocity = VerticalVelocity <= TERMINAL_VELOCITY;
 
 	float ForceOfGravity = JumpHeld ? JUMP_HELD_GRAVITY : DEFAULT_GRAVITY;
-	float AdjustedForceOfGravity = ForceOfGravity * PHYS_FACTOR * GetWorld()->DeltaRealTimeSeconds;
-
+	
+	float AdjustedForceOfGravity = ForceOfGravity * delta_time;
+	
 	float newVerticalVelocity = hasMarioReachedTerminalVelocity? TERMINAL_VELOCITY : VerticalVelocity - AdjustedForceOfGravity;
-
+	
 	UpdateVerticalVelocity(newVerticalVelocity);
 
 	bool isMarioFalling = newVerticalVelocity < 0;
@@ -280,54 +289,122 @@ void AMario::ApplyGravity()
 		Anim_Fall();
 	}
 }
+void AMario::SetJumpVelocities()
+{
+	float SpeedCheckValue = HorizontalVelocity.Length();
+	TArray<FMarioJumpVelocities*> JumpVelocitiesArray;
+	JumpVelocitiesTable->GetAllRows("", JumpVelocitiesArray);
+	
+	for (int i = 0; i < JumpVelocitiesArray.Num(); i++)
+	{
+		FMarioJumpVelocities* JV = JumpVelocitiesArray[i];
+		if (SpeedCheckValue > JV->HorizontalSpeedRequirement)
+		{
+			continue;
+		}
+		JumpVelocities = JV;
+		return;
+	}
+}
 
+void AMario::UpdatePMeter()
+{
+	float CurrentHorizontalVelocityMagnitude = HorizontalVelocity.Length();
+	if (FMath::IsNearlyEqual(CurrentHorizontalVelocityMagnitude, 2.25, 5) || CurrentHorizontalVelocityMagnitude > 2.25)
+	{
+		p_meter += 2;
+	}
+	else
+	{
+		p_meter -= 1;
+	}
+	p_meter = FMath::Clamp(p_meter, 0,112);
+}
 void AMario::UpdateCharacterLocation()
 {
-	FVector3d TotalVelocity = FVector3d(HorizontalVelocity.X, HorizontalVelocity.Y, VerticalVelocity);
+	FVector3d TotalVelocity = FVector3d(HorizontalVelocity.X, HorizontalVelocity.Y, VerticalVelocity) * delta_time * PHYS_FACTOR;
+	FVector3d AdjustedVerticalVelocity = FVector3d(0,0, VerticalVelocity) * delta_time * PHYS_FACTOR;
+	FVector3d AdjustedHorizontalVelocity = FVector3d(HorizontalVelocity.X, HorizontalVelocity.Y, 0) * delta_time * PHYS_FACTOR;
+	
+	FHitResult DirectionalTraceResult;
+	bool DirectionalTraceHit;
+	FVector3d StartVector = GetActorLocation();
+	TraceDirectional(StartVector, StartVector + TotalVelocity*10, DirectionalTraceResult, DirectionalTraceHit);
 	FHitResult* Result = new FHitResult;
-	bool success = SetActorLocation(GetActorLocation()+TotalVelocity, true, Result);
-	if (!success)
+	bool HorizontalMoveSuccess = SetActorLocation(GetActorLocation()+AdjustedHorizontalVelocity, true, Result);
+	bool VerticlMoveSuccess = SetActorLocation(GetActorLocation()+AdjustedVerticalVelocity, true, Result);
+	if (!VerticlMoveSuccess && IsJumping())
 	{
-		SetActorLocation(Result->Location);
-	}
-	FHitResult FloorHitResult;
-	bool FloorHitSuccess;
-	TraceDown(FloorHitResult, FloorHitSuccess);
-	if (!FloorHitSuccess && !IsJumping())
-	{
-		LedgeWalkOff();
+		OnLanding();
 	}
 }
 
 void AMario::UpdateCameraLocation()
 {
-	
+	FRotator CameraRot = FRotator(0, InputHorizontalMoveValueBinding->GetValue().Get<FVector2d>().X * .5f, 0);
+	SpringArmComponent->AddRelativeRotation(CameraRot);
 }
 
 void AMario::RotateCharacter()
 {
+	FVector2d MovementVector = GetCameraBasedMovementDirection();
+	FVector3d HorizontalMovementVector = FVector3d(MovementVector.X, MovementVector.Y, 0);
+	MarioMesh->SetWorldRotation(HorizontalMovementVector.Rotation());
 }
 
 void AMario::TraceForward(FHitResult& HitResult, bool& HitDetected)
 {
 	FVector3d StartVector = GetActorLocation();
-	FVector3d EndVector = GetActorLocation() + (GetActorForwardVector() * 80);
+	FVector3d EndVector = GetActorLocation() + (MarioMesh->GetForwardVector() * 160);
+
+	TArray<TEnumAsByte<EObjectTypeQuery>> GroundCheck;
+	GroundCheck.Add(UEngineTypes::ConvertToObjectType(ECC_WorldDynamic));
+	GroundCheck.Add(UEngineTypes::ConvertToObjectType(ECC_WorldStatic));
+
+	TArray<AActor*> ActorsToIgnore;
+	
 	EDrawDebugTrace::Type DrawDebugTrace = DrawDebugTraces ? EDrawDebugTrace::ForOneFrame : EDrawDebugTrace::None;
 	FLinearColor TraceColor = FLinearColor::Red;
 	FLinearColor HitColor = FLinearColor::Green;
 	float DrawTime = .5f;
-	DrawDebugLineTraceSingle(GetWorld(), StartVector, EndVector, DrawDebugTrace, HitDetected, HitResult, TraceColor, HitColor, DrawTime);
+	UKismetSystemLibrary::LineTraceSingleForObjects(GetWorld(), StartVector, EndVector, GroundCheck, true, ActorsToIgnore, DrawDebugTrace, HitResult, true, TraceColor, HitColor, DrawTime);
+	HitDetected = HitResult.bBlockingHit;
+}
+
+void AMario::TraceDirectional(FVector3d StartVector, FVector3d EndVector, FHitResult& HitResult, bool& HitDetected)
+{
+	TArray<TEnumAsByte<EObjectTypeQuery>> GroundCheck;
+	GroundCheck.Add(UEngineTypes::ConvertToObjectType(ECC_WorldDynamic));
+	GroundCheck.Add(UEngineTypes::ConvertToObjectType(ECC_WorldStatic));
+
+	TArray<AActor*> ActorsToIgnore;
+	
+	EDrawDebugTrace::Type DrawDebugTrace = DrawDebugTraces ? EDrawDebugTrace::ForOneFrame : EDrawDebugTrace::None;
+	FLinearColor TraceColor = FLinearColor::Red;
+	FLinearColor HitColor = FLinearColor::Green;
+	float DrawTime = .5f;
+	UKismetSystemLibrary::LineTraceSingleForObjects(GetWorld(), StartVector, EndVector, GroundCheck, true, ActorsToIgnore, DrawDebugTrace, HitResult, true, TraceColor, HitColor, DrawTime);
+	HitDetected = HitResult.bBlockingHit;
 }
 
 void AMario::TraceDown(FHitResult& HitResult, bool& HitDetected)
 {
-	FVector3d StartVector = GetActorLocation();
+	FVector3d StartVector = GetActorLocation() + FVector3d(0,0,40);
 	FVector3d EndVector = GetActorLocation() + FVector3d(0,0, -100);
+
+	TArray<TEnumAsByte<EObjectTypeQuery>> GroundCheck;
+	GroundCheck.Add(UEngineTypes::ConvertToObjectType(ECC_WorldDynamic));
+	GroundCheck.Add(UEngineTypes::ConvertToObjectType(ECC_WorldStatic));
+
+	TArray<AActor*> ActorsToIgnore;
+
 	EDrawDebugTrace::Type DrawDebugTrace = DrawDebugTraces ? EDrawDebugTrace::ForOneFrame : EDrawDebugTrace::None;
+	
 	FLinearColor TraceColor = FLinearColor::Red;
 	FLinearColor HitColor = FLinearColor::Green;
 	float DrawTime = .5f;
-	DrawDebugSphereTraceSingle(GetWorld(), StartVector, EndVector, 40, DrawDebugTrace, HitDetected, HitResult, TraceColor, HitColor, DrawTime);
+	UKismetSystemLibrary::SphereTraceSingleForObjects(GetWorld(), StartVector, EndVector, 40, GroundCheck, true, ActorsToIgnore, DrawDebugTrace, HitResult, true, TraceColor, HitColor, DrawTime);
+	HitDetected = HitResult.bBlockingHit;
 }
 
 float AMario::GetFloorAngle()
@@ -344,14 +421,9 @@ float AMario::GetFloorAngle()
 
 	FVector3d HitNormal = FloorHitResult.ImpactNormal;
 	float NormalCoefficient = HitNormal.Dot(FVector3d::UpVector);
-	float FloorAngle = acosf(NormalCoefficient);
+	
+	float FloorAngle = UKismetMathLibrary::DegAcos(NormalCoefficient);
 
-	/*
-	if (FMath::IsNearlyEqual(FloorAngle, 90, 2.f))
-	{
-		FloorAngle = 0;
-	}
-	*/
 	
 	return FloorAngle;
 }
@@ -361,11 +433,38 @@ bool AMario::IsMarioGrounded()
 	FHitResult HitResult;
 	bool HitSuccess;
 	TraceDown(HitResult, HitSuccess);
-	if (!HitSuccess)
+	if (!HitResult.bBlockingHit)
 	{
 		return false;
 	}
 	return HitResult.Distance <= .1f;
+}
+
+FVector2d AMario::GetCameraBasedMovementDirection()
+{
+	FRotator3d FlattenedCameraRotation = FRotator3d(0, CameraComponent->GetComponentRotation().Yaw, 0);
+	FVector2d InputVector = InputHorizontalMoveValueBinding->GetValue().Get<FVector2d>();
+	
+	FVector3d ForwardComponent = InputVector.Y * FlattenedCameraRotation.Vector();
+	FVector3d RightComponent = InputVector.X * UKismetMathLibrary::GetRightVector(FlattenedCameraRotation);
+	FVector3d TotalComponent = ForwardComponent + RightComponent;
+	return FVector2d(TotalComponent.X, TotalComponent.Y);
+}
+
+bool AMario::IsVelocityGreaterThanMax()
+{
+	float VelocityToCheck = PhysicsProperties->MaxWalkVelocity;
+	if (MarioState == EMarioStates::Crouched)
+	{
+		VelocityToCheck = PhysicsProperties->SlideMaxVelocity;
+	}
+	
+	bool RunHeld = InputSpecialValueBinding->GetValue().Get<float>() > 0.0f;
+	if(RunHeld)
+	{
+		VelocityToCheck = p_meter == 112 ? PhysicsProperties->SprintMaxVelocity : PhysicsProperties->RunMaxVelocity;
+	}
+	return HorizontalVelocity.Length() > VelocityToCheck;
 }
 
 #pragma endregion
@@ -374,6 +473,11 @@ bool AMario::IsMarioGrounded()
 
 void AMario::ApplyHorizontalInput(const FInputActionValue& InputActionValue)
 {
+	if (!IsPlayerAddingMovement())
+	{
+		return;
+	}
+	
 	if (MarioState == EMarioStates::LookingUp)
 	{
 		return;
@@ -384,6 +488,16 @@ void AMario::ApplyHorizontalInput(const FInputActionValue& InputActionValue)
 		return;
 	}
 
+	FVector2d MoveDirection = GetCameraBasedMovementDirection();
+	
+	FVector2d NewVelocity;
+	
+	bool RunHeld = InputSpecialValueBinding->GetValue().Get<float>() > 0.0f;
+
+	float Accel = RunHeld ? PhysicsProperties->RunAccel : PhysicsProperties->WalkAccel;
+	float Decel = PhysicsProperties->Decel;
+	float SkidDecel = RunHeld ? PhysicsProperties->RunSkidDecel : PhysicsProperties->WalkSkidDecel;
+	
 	if (HorizontalVelocity.Length() <= (skidding ? 0.25f : 0.0f))
 	{
 		if (skidding)
@@ -391,13 +505,53 @@ void AMario::ApplyHorizontalInput(const FInputActionValue& InputActionValue)
 			EndSkid();
 		}
 
-		FVector2d NewVelocity;
+		NewVelocity = MoveDirection * Accel;
+		UpdateHorizontalVelocity(NewVelocity);
+	}
 
+	if (MarioState != EMarioStates::SpinJumping)
+	{
+		RotateCharacter();
+	}
 
+	if (skidding)
+	{
+		NewVelocity = HorizontalVelocity;
+		AccelerateVector2d(NewVelocity, SkidDecel * -1);
+		FVector2d TargetVector = MoveDirection * -1;
+		NewVelocity = ((NewVelocity.Dot(TargetVector))/(TargetVector.Dot(TargetVector))) * TargetVector;
 		UpdateHorizontalVelocity(NewVelocity);
 		
+		return;
 	}
+
+	bool isDirectionChangingAbruptly = MoveDirection.Dot(HorizontalVelocity.GetSafeNormal()) < .35;
+	bool isMovingFastEnoughToTriggerSkid = HorizontalVelocity.Length() > 2;
+
+	if (isDirectionChangingAbruptly && isMovingFastEnoughToTriggerSkid)
+	{
+		BeginSkid();
+		return;
+	}
+
+	if (!IsJumping())
+	{
+		Anim_Walk();
+	}
+
+	float value = IsVelocityGreaterThanMax()? Decel * -1 : Accel;
+	NewVelocity = HorizontalVelocity;
+	AccelerateVector2d(NewVelocity, value);
+	NewVelocity = ((NewVelocity.Dot(MoveDirection))/(MoveDirection.Dot(MoveDirection))*MoveDirection);
+	UpdateHorizontalVelocity(NewVelocity);
+	
 }
+
+bool AMario::IsPlayerAddingMovement()
+{
+	return InputHorizontalMoveValueBinding->GetValue().Get<FVector2d>().Length() > .25f;
+}
+
 
 void AMario::SMW_Crouch()
 {
@@ -483,7 +637,7 @@ void AMario::BeginSkid()
 	{
 		GetWorldTimerManager().ClearTimer(skid_timer);
 	}
-	GetWorldTimerManager().SetTimer(skid_timer, this, &AMario::EndSkid, .2);
+	GetWorldTimerManager().SetTimer(skid_timer, this, &AMario::EndSkid, SKID_TIME);
 	if (!IsJumping())
 	{
 		SpawnDustParticle();
@@ -501,7 +655,6 @@ void AMario::EndSkid()
 
 void AMario::LedgeWalkOff()
 {
-	
 }
 
 void AMario::Jump()
@@ -521,7 +674,7 @@ void AMario::Jump()
 	
 	gravity_enabled = true;
 	MarioState = NormalJumping;
-	UpdateVerticalVelocity(JumpVelocities->JumpVelocity);
+	UpdateVerticalVelocity(JumpVelocities->JumpVelocity * delta_time);
 
 	//TODO: understand the real logic behind this
 	if (HorizontalVelocity.Length() > PhysicsProperties->MaxWalkVelocity)
@@ -550,7 +703,7 @@ void AMario::SpinJump()
 	MarioState = EMarioStates::SpinJumping;
 	Anim_Idle();
 
-	UpdateVerticalVelocity(JumpVelocities->SpinJumpVelocity);
+	UpdateVerticalVelocity(JumpVelocities->SpinJumpVelocity * delta_time);
 	//spin rotation
 
 	if (power_state == 2)
@@ -686,13 +839,7 @@ void AMario::GetStoredPowerUp()
 	
 }
 
-void AMario::SetJumpVelocities()
-{
-}
 
-void AMario::UpdatePMeter()
-{
-}
 
 void AMario::TakeDamage(bool instantDeath)
 {
